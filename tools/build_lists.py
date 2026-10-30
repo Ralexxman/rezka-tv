@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from datetime import date
 from html import unescape
 from pathlib import Path
+from urllib.request import OpenerDirector
 
 REPO = Path(__file__).resolve().parent.parent
 ASSETS = REPO / "app" / "src" / "main" / "assets" / "lists"
@@ -28,13 +29,14 @@ DEFAULT_CACHE = Path.home() / ".cache" / "rezka-tv"
 IMDB_DATASETS = "https://datasets.imdbws.com/"
 IMDB_MAX_AGE_DAYS = 30
 WDQS = "https://query.wikidata.org/sparql"
-REZKA = "https://rezka.fi/"
+REZKA = os.environ.get("REZKA_SITE", "https://rezka.ag/")
 BROWSER_UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
 )
 BOT_UA = "RezkaTvListsBuilder/1.0 (personal Android TV app; tools/build_lists.py)"
 REZKA_INTERVAL_S = 2.0
+EMPTY_LIMIT = 5
 
 BUCKET_SIZE = 500
 USAGE = """\
@@ -247,7 +249,8 @@ class Http:
         self.offline = offline
         self.last = 0.0
         self.requests = 0
-        self.opener = None
+        self.misses = 0
+        self.opener: OpenerDirector | None = None
         if cookies:
             jar = http.cookiejar.MozillaCookieJar(str(cookies))
             jar.load(ignore_discard=True, ignore_expires=True)
@@ -257,14 +260,17 @@ class Http:
         h = hashlib.sha1(url.encode()).hexdigest()
         return self.cache / h[:2] / (h + ".html.gz")
 
+    def _open(self, req):
+        if self.opener is None:
+            sys.exit("Нужны cookies rezka: --cookies <файл>")
+        return self.opener.open(req, timeout=40)
+
     def get(self, url: str):
         path = self._path(url)
         if path.exists():
             return gzip.decompress(path.read_bytes()).decode("utf-8")
         if self.offline:
             return None
-        if self.opener is None:
-            sys.exit("Нужны cookies rezka: --cookies <файл>")
         for attempt in range(4):
             wait = self.last + REZKA_INTERVAL_S - time.monotonic()
             if wait > 0:
@@ -273,7 +279,7 @@ class Http:
             self.requests += 1
             try:
                 req = urllib.request.Request(url, headers={"User-Agent": BROWSER_UA, "Accept-Language": "ru,en;q=0.8"})
-                with self.opener.open(req, timeout=40) as resp:
+                with self._open(req) as resp:
                     body = resp.read()
                 break
             except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
@@ -288,6 +294,15 @@ class Http:
         if body[:2] == b"\x1f\x8b":
             body = gzip.decompress(body)
         html = body.decode("utf-8", "replace")
+        if not html:
+            self.misses += 1
+            if self.misses >= EMPTY_LIMIT:
+                sys.exit(
+                    f"rezka не отдаёт страницы ({self.misses} пустых ответов подряд): {url}\n"
+                    f"Похоже, домен устарел: поправьте REZKA в tools/build_lists.py или задайте REZKA_SITE."
+                )
+            return None
+        self.misses = 0
         if 'id="loginForm"' in html and "b-content__inline_item" not in html and "b-post__title" not in html:
             sys.exit("rezka просит войти: cookies устарели, выгрузите их заново")
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -311,7 +326,7 @@ def download(url: str, path: Path, max_age_days: int):
 
 
 class Matcher:
-    def __init__(self, http_: Http):
+    def __init__(self, http_):
         self.http = http_
 
     def search(self, query: str):
@@ -521,6 +536,8 @@ def fetch_oscars(cache: Path, offline: bool, refresh: bool) -> list:
                 raise
             log("  Wikidata: 429, жду минуту")
             time.sleep(65)
+    else:
+        raise RuntimeError("Wikidata не ответила")
     rows = [{k: v["value"] for k, v in r.items()} for r in rows]
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(rows, ensure_ascii=False))

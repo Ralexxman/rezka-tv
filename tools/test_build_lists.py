@@ -1,6 +1,8 @@
 import base64
+import tempfile
 import unittest
 import urllib.parse
+from pathlib import Path
 
 import build_lists as b
 
@@ -130,7 +132,7 @@ class MatcherTest(unittest.TestCase):
 
     def test_single_candidate_without_page(self):
         http = FakeHttp({self.search_url("Heat"): SEARCH})
-        card = b.Matcher(http).match("tt0113277", "movie", 1995, ["Heat", "Heat"])
+        card = b.Matcher(http).match("tt0113277", "movie", 1995, ["Heat", "Heat"]) or {}
         self.assertEqual("1076", card["id"])
         self.assertEqual(1, len(http.requested))
 
@@ -152,7 +154,9 @@ class MatcherTest(unittest.TestCase):
         http = FakeHttp({self.search_url("Heat"): SEARCH})
         self.assertIsNone(b.Matcher(http).match("tt0113277", "movie", 1995, ["Heat"], russian="Жара"))
         http = FakeHttp({self.search_url("Heat"): SEARCH})
-        self.assertEqual("1076", b.Matcher(http).match("tt0113277", "movie", 1995, ["Heat"], russian="Схватка")["id"])
+        self.assertEqual(
+            "1076", (b.Matcher(http).match("tt0113277", "movie", 1995, ["Heat"], russian="Схватка") or {})["id"]
+        )
 
     def test_wikidata_label(self):
         self.assertEqual("Ярмарка штата", b.wikidata_label("Ярмарка штата (фильм, 1933)"))
@@ -182,7 +186,47 @@ class MatcherTest(unittest.TestCase):
                 "https://rezka.fi/films/thriller/50654-prikrytie-1995.html": f'b-post__info_rates imdb"><a href="/help/{link}/">',
             }
         )
-        self.assertEqual("50654", b.Matcher(http).match("tt0113277", "movie", 1995, ["Heat"])["id"])
+        self.assertEqual("50654", (b.Matcher(http).match("tt0113277", "movie", 1995, ["Heat"]) or {})["id"])
+
+
+class _EmptyResponse:
+    def read(self):
+        return b""
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+class _EmptyHttp(b.Http):
+    def _open(self, req):
+        return _EmptyResponse()
+
+
+class HttpClientTest(unittest.TestCase):
+    def test_stops_on_dead_domain(self):
+        http = _EmptyHttp(Path(tempfile.mkdtemp()), None, False)
+        stopped = _walks_empty_domain(http)
+        self.assertTrue(stopped, "пустые ответы останавливают обход")
+
+    def test_keeps_no_cache_for_empty_responses(self):
+        tmp = Path(tempfile.mkdtemp())
+        http = _EmptyHttp(tmp, None, False)
+        for _ in range(b.EMPTY_LIMIT - 1):
+            http.get("https://rezka.example/search/?q=heat")
+        cached = list(tmp.rglob("*.gz"))
+        self.assertEqual([], cached, "пустые ответы не попадают в кеш")
+
+
+def _walks_empty_domain(http):
+    try:
+        for _ in range(b.EMPTY_LIMIT):
+            http.get("https://rezka.example/search/?q=heat")
+    except SystemExit:
+        return True
+    return False
 
 
 class OscarTest(unittest.TestCase):
