@@ -72,3 +72,18 @@
 - В `main` — только через pull request с зелёной проверкой; проверка — одна команда, как на любой машине.
 - Сборка падает на любом предупреждении компилятора и lint.
 - Выпуск release — одной командой, без ручных шагов (кроме ключа из `keystore.properties`).
+
+## Agent skills
+
+### Issue tracker
+
+GitHub issues (`gh`). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Canonical 5-role vocabulary. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context (`GLOSSARY.md`, `docs/adr/`). See `docs/agents/domain.md`.
+
