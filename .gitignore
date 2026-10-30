@@ -11,6 +11,7 @@ local.properties
 *.jks
 *.keystore
 keystore.properties
+*cookies*.txt
 
 .idea/
 *.iml
@@ -22,3 +23,5 @@ keystore.properties
 app/src/main/assets/lists/top.json
 __pycache__/
 .ai-review-*
+.pi/
+.llm-wiki/
