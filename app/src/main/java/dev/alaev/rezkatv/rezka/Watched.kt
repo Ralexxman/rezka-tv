@@ -5,6 +5,8 @@ import android.util.Log
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
@@ -53,7 +55,7 @@ class WatchedStore(private val file: File, private val writer: Executor = BACKGR
                 out.write(json.toByteArray())
                 out.fd.sync()
             }
-            if (!tmp.renameTo(file)) throw java.io.IOException("rename failed")
+            Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING)
         } catch (e: Exception) {
             Log.w(TAG, "watched: write failed: $e")
             tmp.delete()
