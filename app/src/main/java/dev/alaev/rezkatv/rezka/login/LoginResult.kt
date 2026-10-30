@@ -6,10 +6,13 @@ data class LoginResult(val success: Boolean, val message: String) {
 
     companion object {
         private val TAGS = Regex("<[^>]*>")
+        private val CHALLENGE = Regex("anubis_challenge|Проверяем, что вы не бот")
         const val DEFAULT_ERROR = "Не удалось войти"
+        const val BROWSER_CHECK = "Сайт проверяет браузер — войдите через «Войти на телевизоре»"
 
         fun parse(json: String): LoginResult {
-            val obj = runCatching { JSONObject(json) }.getOrNull() ?: return LoginResult(false, DEFAULT_ERROR)
+            val obj = runCatching { JSONObject(json) }.getOrNull()
+                ?: return LoginResult(false, if (CHALLENGE.containsMatchIn(json)) BROWSER_CHECK else DEFAULT_ERROR)
             if (obj.optBoolean("success")) return LoginResult(true, "")
             val raw = when (val message = obj.opt("message")) {
                 is JSONObject -> message.keys().asSequence().map { message.optString(it) }.joinToString("\n")

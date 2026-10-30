@@ -47,7 +47,7 @@
             app:title="@string/pref_logout" />
 
         <ListPreference
-            app:defaultValue="https://rezka.fi/"
+            app:defaultValue="https://rezka.ag/"
             app:entries="@array/mirror_titles"
             app:entryValues="@array/mirror_values"
             app:key="mirror"

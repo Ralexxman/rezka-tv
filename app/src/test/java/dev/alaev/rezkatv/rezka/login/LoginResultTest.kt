@@ -41,4 +41,11 @@ class LoginResultTest {
         val json = """{"success":false}"""
         assertThat("отказ без сообщения", LoginResult.parse(json), equalTo(expected))
     }
+
+    @Test
+    fun reportsBrowserCheckWhenSiteChallengesTheClient() {
+        val expected = LoginResult(false, LoginResult.BROWSER_CHECK)
+        val html = """<html><head><title>Проверяем, что вы не бот!</title></head></html>"""
+        assertThat("страница проверки браузера вместо JSON", LoginResult.parse(html), equalTo(expected))
+    }
 }

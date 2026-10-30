@@ -29,12 +29,10 @@
         <item>30</item>
     </string-array>
     <string-array name="mirror_titles" translatable="false">
-        <item>rezka.fi</item>
         <item>rezka.ag</item>
         <item>hdrezka.ag</item>
     </string-array>
     <string-array name="mirror_values" translatable="false">
-        <item>https://rezka.fi/</item>
         <item>https://rezka.ag/</item>
         <item>https://hdrezka.ag/</item>
     </string-array>

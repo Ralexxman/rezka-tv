@@ -95,33 +95,12 @@ class RezkaClient private constructor(context: Context, val baseUrl: String) {
     }
 
     fun login(email: String, password: String): LoginResult {
-        val url = resolve("/ajax/login/")
         val body = form(listOf("login_name" to email, "login_password" to password, "login_not_save" to "0"))
-        val conn = URL(url).openConnection() as HttpURLConnection
-        conn.connectTimeout = TIMEOUT_MS
-        conn.readTimeout = TIMEOUT_MS
-        conn.requestMethod = "POST"
-        conn.doOutput = true
-        conn.setRequestProperty("User-Agent", USER_AGENT)
-        conn.setRequestProperty("X-Requested-With", "XMLHttpRequest")
-        conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
-        conn.setRequestProperty("Origin", baseUrl.trimEnd('/'))
-        conn.setRequestProperty("Referer", baseUrl)
-        try {
-            conn.outputStream.use { it.write(body.toByteArray()) }
-            if (conn.responseCode !in 200..299) throw IOException("HTTP ${conn.responseCode} for login")
-            val result = LoginResult.parse(decode(conn.inputStream))
-            if (!result.success) return result
-            val setCookies = conn.headerFields["Set-Cookie"].orEmpty()
-            val session = setCookies.mapNotNull { Cookies.parseSetCookie(it, System.currentTimeMillis()) }
-                .any { it.name == LOGIN_COOKIE && !it.expired }
-            if (!session) return LoginResult(false, LoginResult.DEFAULT_ERROR)
-            cookies.replaceWith(setCookies)
-            clearCaches()
-            return result
-        } finally {
-            conn.disconnect()
-        }
+        val result = LoginResult.parse(request(resolve("/ajax/login/"), body, baseUrl))
+        if (!result.success) return result
+        if (!cookies.has(LOGIN_COOKIE)) return LoginResult(false, LoginResult.DEFAULT_ERROR)
+        clearCaches()
+        return result
     }
 
     fun clearCaches() {
@@ -152,6 +131,43 @@ class RezkaClient private constructor(context: Context, val baseUrl: String) {
     private fun post(url: String, body: String, referer: String) = request(url, body, referer)
 
     private fun request(url: String, body: String?, referer: String?): String = timed("net ${path(url)}") {
+        val html = requestOnce(url, body, referer)
+        val challenge = if (isSiteUrl(url)) Anubis.challenge(html) else null
+        if (challenge == null) {
+            html
+        } else {
+            passAnubis(challenge, url)
+            requestOnce(url, body, referer)
+        }
+    }
+
+    private fun passAnubis(challenge: AnubisChallenge, url: String) {
+        val (nonce, hash) = Anubis.solve(challenge.randomData, challenge.difficulty)
+        val query = form(
+            listOf(
+                "id" to challenge.id,
+                "response" to hash,
+                "nonce" to nonce.toString(),
+                "redir" to url,
+                "elapsedTime" to PASS_ELAPSED_MS,
+            ),
+        )
+        val conn = URL(resolve(Anubis.PASS_PATH + "?" + query)).openConnection() as HttpURLConnection
+        conn.connectTimeout = TIMEOUT_MS
+        conn.readTimeout = TIMEOUT_MS
+        conn.instanceFollowRedirects = false
+        conn.setRequestProperty("User-Agent", USER_AGENT)
+        conn.setRequestProperty("Referer", url)
+        cookies.header()?.let { conn.setRequestProperty("Cookie", it) }
+        try {
+            if (conn.responseCode >= ERROR_STATUS) throw IOException("HTTP ${conn.responseCode} for anubis")
+            cookies.update(conn.headerFields["Set-Cookie"].orEmpty())
+        } finally {
+            conn.disconnect()
+        }
+    }
+
+    private fun requestOnce(url: String, body: String?, referer: String?): String {
         val conn = URL(url).openConnection() as HttpURLConnection
         conn.connectTimeout = TIMEOUT_MS
         conn.readTimeout = TIMEOUT_MS
@@ -166,9 +182,11 @@ class RezkaClient private constructor(context: Context, val baseUrl: String) {
             referer?.let { conn.setRequestProperty("Referer", it) }
             conn.outputStream.use { it.write(body.toByteArray()) }
         }
-        try {
+        return try {
             if (isSiteUrl(url)) cookies.update(conn.headerFields["Set-Cookie"].orEmpty())
-            if (conn.responseCode !in 200..299) throw IOException("HTTP ${conn.responseCode} for ${path(url)}")
+            if (conn.responseCode !in OK_STATUS until REDIRECT_STATUS) {
+                throw IOException("HTTP ${conn.responseCode} for ${path(url)}")
+            }
             decode(conn.inputStream)
         } finally {
             conn.disconnect()
@@ -204,9 +222,13 @@ class RezkaClient private constructor(context: Context, val baseUrl: String) {
     companion object {
         const val USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
-        const val DEFAULT_BASE = "https://rezka.fi/"
+        const val DEFAULT_BASE = "https://rezka.ag/"
         private const val TAG = "RezkaTv"
         private const val TIMEOUT_MS = 20_000
+        private const val OK_STATUS = 200
+        private const val REDIRECT_STATUS = 300
+        private const val ERROR_STATUS = 400
+        private const val PASS_ELAPSED_MS = "1000"
         private const val RECENT_MS = 5 * 60_000L
         private const val LOGIN_COOKIE = "dle_user_id"
 

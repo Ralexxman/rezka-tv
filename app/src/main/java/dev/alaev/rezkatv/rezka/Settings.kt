@@ -11,7 +11,11 @@ class Settings(context: Context) {
     val autoplayNext: Boolean get() = prefs.getBoolean(KEY_AUTOPLAY, true)
     val seekStepMs: Long get() = seekStepMs(prefs.getString(KEY_SEEK_STEP, null))
     val liteMode: Boolean get() = prefs.getBoolean(KEY_LITE, false)
-    val baseUrl: String get() = prefs.getString(KEY_MIRROR, null) ?: RezkaClient.DEFAULT_BASE
+    val baseUrl: String
+        get() {
+            val saved = prefs.getString(KEY_MIRROR, null)
+            return if (saved == null || saved == RETIRED_MIRROR) RezkaClient.DEFAULT_BASE else saved
+        }
 
     fun setQuality(label: String) = prefs.edit().putString(KEY_QUALITY, label).apply()
     fun setBaseUrl(url: String) = prefs.edit().putString(KEY_MIRROR, url).apply()
@@ -23,6 +27,7 @@ class Settings(context: Context) {
         const val KEY_LITE = "lite_mode"
         const val KEY_MIRROR = "mirror"
         const val AUTO = "auto"
+        private const val RETIRED_MIRROR = "https://rezka.fi/"
         private const val DEFAULT_SEEK_STEP_S = 10L
 
         fun seekStepMs(value: String?): Long = (value?.toLongOrNull()?.takeIf { it in 1..120 } ?: DEFAULT_SEEK_STEP_S) * 1000
