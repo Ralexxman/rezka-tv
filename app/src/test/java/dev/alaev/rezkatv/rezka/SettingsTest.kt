@@ -68,6 +68,13 @@ class SettingsTest {
     }
 
     @Test
+    fun picksBestAvailableRegardlessOfScreenAndUltra() {
+        val expected = "2160p"
+        val picked = QualityPicker.pick(qualities("360p", "1080p", "1080p Ultra", "2160p"), Settings.BEST, 1080)?.label
+        assertThat("«Лучшее доступное» — максимум из списка сайта", picked, equalTo(expected))
+    }
+
+    @Test
     fun picksNothingFromEmptyList() {
         val picked = QualityPicker.pick(emptyList(), Settings.AUTO, 1080)
         assertThat("без качеств выбирать нечего", picked, nullValue())

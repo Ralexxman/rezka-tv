@@ -2,6 +2,7 @@
 <resources>
     <string-array name="quality_titles">
         <item>Авто (по экрану)</item>
+        <item>Лучшее доступное</item>
         <item>360p</item>
         <item>480p</item>
         <item>720p</item>
@@ -10,6 +11,7 @@
     </string-array>
     <string-array name="quality_values" translatable="false">
         <item>auto</item>
+        <item>best</item>
         <item>360p</item>
         <item>480p</item>
         <item>720p</item>
@@ -27,6 +29,18 @@
         <item>10</item>
         <item>15</item>
         <item>30</item>
+    </string-array>
+    <string-array name="cache_titles">
+        <item>1 ГБ</item>
+        <item>2 ГБ</item>
+        <item>4 ГБ</item>
+        <item>8 ГБ</item>
+    </string-array>
+    <string-array name="cache_values" translatable="false">
+        <item>1</item>
+        <item>2</item>
+        <item>4</item>
+        <item>8</item>
     </string-array>
     <string-array name="mirror_titles" translatable="false">
         <item>rezka.ag</item>

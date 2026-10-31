@@ -211,6 +211,7 @@ class PlayerActivity : FragmentActivity() {
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
+        VideoCache.cancel()
         scope.cancel()
         player.release()
         super.onDestroy()
@@ -306,6 +307,7 @@ class PlayerActivity : FragmentActivity() {
     private fun start(target: Episode?, positionMs: Long) {
         val d = details ?: return
         val t = translator ?: return
+        VideoCache.cancel()
         preparing = true
         requestedPosition = positionMs
         episode = target
@@ -331,6 +333,13 @@ class PlayerActivity : FragmentActivity() {
             prepare(position, 0)
             loadThumbnails(s.thumbnails)
         }
+    }
+
+    private fun startPrefetch(from: Long) {
+        if (stopped) return
+        val q = quality
+        val url = q?.urls?.getOrNull(urlIndex)
+        if (q != null && url != null) VideoCache.prefetch(url, from.coerceAtLeast(0), q.height)
     }
 
     private fun prepare(positionMs: Long, index: Int) {
@@ -391,6 +400,7 @@ class PlayerActivity : FragmentActivity() {
             .setAllowCrossProtocolRedirects(true)
             .setConnectTimeoutMs(HTTP_TIMEOUT_MS)
             .setReadTimeoutMs(HTTP_TIMEOUT_MS)
+        val cached = VideoCache.install(this, DefaultDataSource.Factory(this, http))
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(30_000, 60_000, 2_000, 4_000)
             .setTargetBufferBytes(BUFFER_BYTES)
@@ -398,7 +408,7 @@ class PlayerActivity : FragmentActivity() {
             .build()
         val renderers = DefaultRenderersFactory(this).setEnableDecoderFallback(true)
         return ExoPlayer.Builder(this, renderers)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(DefaultDataSource.Factory(this, http)))
+            .setMediaSourceFactory(DefaultMediaSourceFactory(cached))
             .setLoadControl(loadControl)
             .setAudioAttributes(
                 AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(),
@@ -423,8 +433,13 @@ class PlayerActivity : FragmentActivity() {
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
-            if (!isPlaying && !player.playWhenReady) handler.post {
-                if (!player.playWhenReady && seekProvider?.seeking != true) saveProgress(toServer = true)
+            if (isPlaying) return
+            if (player.playWhenReady) return
+            handler.post {
+                if (!player.playWhenReady && seekProvider?.seeking != true) {
+                    saveProgress(toServer = true)
+                    startPrefetch(player.currentPosition)
+                }
             }
         }
 
@@ -675,6 +690,17 @@ class PlayerActivity : FragmentActivity() {
             if (firstSave || (serverSaved && now - lastServerSave >= SERVER_SAVE_MS)) saveProgress(toServer = true)
         }
         updateNextUp()
+        drivePrefetch()
+    }
+
+    private fun drivePrefetch() {
+        if (stopped || !player.isPlaying) return
+        val ahead = player.bufferedPosition - player.currentPosition
+        if (ahead < PREFETCH_LOW_MS) {
+            VideoCache.cancel()
+        } else if (ahead >= PREFETCH_START_MS) {
+            startPrefetch(player.bufferedPosition)
+        }
     }
 
     private fun updateNextUp() {
@@ -848,6 +874,8 @@ class PlayerActivity : FragmentActivity() {
         private const val NEXT_UP_COUNTDOWN_MS = 10_000L
         private const val HTTP_TIMEOUT_MS = 15_000
         private const val BUFFER_BYTES = 48 * 1024 * 1024
+        private const val PREFETCH_START_MS = 10_000L
+        private const val PREFETCH_LOW_MS = 5_000L
         private const val SUBTITLES_ABOVE_CONTROLS = 0.34f
         private const val SUBTITLES_BOTTOM = 0.1f
 

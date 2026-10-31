@@ -92,6 +92,7 @@
     <string name="pref_autoplay">Автовоспроизведение следующей серии</string>
     <string name="pref_autoplay_summary">Отсчёт 10 секунд в конце серии</string>
     <string name="pref_seek_step">Шаг перемотки</string>
+    <string name="pref_cache_size">Кэш видео</string>
     <string name="pref_interface">Интерфейс</string>
     <string name="pref_lite">Облегчённый режим</string>
     <string name="pref_lite_summary">Без большой обложки и с меньшим числом рядов</string>

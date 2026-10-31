@@ -25,6 +25,14 @@
             app:key="seek_step"
             app:title="@string/pref_seek_step"
             app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            app:defaultValue="4"
+            app:entries="@array/cache_titles"
+            app:entryValues="@array/cache_values"
+            app:key="cache_gb"
+            app:title="@string/pref_cache_size"
+            app:useSimpleSummaryProvider="true" />
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/pref_interface">
