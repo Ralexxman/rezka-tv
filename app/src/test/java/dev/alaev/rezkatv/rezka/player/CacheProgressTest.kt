@@ -8,17 +8,22 @@ import org.junit.jupiter.api.Test
 class CacheProgressTest {
 
     @Test
-    fun `no running prefetch shows no progress`() {
-        assertThat(CacheProgress.megabytes(null), nullValue())
+    fun showsNoProgressWithoutRunningPrefetch() {
+        val actual = CacheProgress.megabytes(null)
+        assertThat("без докачки надписи нет", actual, nullValue())
     }
 
     @Test
-    fun `downloaded bytes are shown in whole megabytes rounded down`() {
-        assertThat(CacheProgress.megabytes(5L * 1024 * 1024 + 1), equalTo(5L))
+    fun roundsDownloadedBytesToWholeMegabytes() {
+        val expected = 5L
+        val actual = CacheProgress.megabytes(5L * 1024 * 1024 + 1)
+        assertThat("целые мегабайты с округлением вниз", actual, equalTo(expected))
     }
 
     @Test
-    fun `cache shrinking under eviction never shows a negative amount`() {
-        assertThat(CacheProgress.megabytes(-4096), equalTo(0L))
+    fun clampsNegativeAmountToZero() {
+        val expected = 0L
+        val actual = CacheProgress.megabytes(-4096)
+        assertThat("отрицательный счёт показывается как ноль", actual, equalTo(expected))
     }
 }
