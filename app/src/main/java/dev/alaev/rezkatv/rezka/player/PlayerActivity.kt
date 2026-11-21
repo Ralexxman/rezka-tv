@@ -109,6 +109,7 @@ class PlayerActivity : FragmentActivity() {
     private var quality: Quality? = null
     private var chosenQuality: String? = null
     private var subtitle: Subtitle? = null
+    private var cacheMb: Long? = null
     private var urlIndex = 0
     private var tiles: List<Tile> = emptyList()
     private var seekProvider: ThumbnailSeekProvider? = null
@@ -727,7 +728,8 @@ class PlayerActivity : FragmentActivity() {
         nextUpProgress.visibility = if (countdown) View.VISIBLE else View.GONE
         nextUpCountdown.visibility = if (countdown) View.VISIBLE else View.GONE
         if (countdown) renderCountdown(NEXT_UP_COUNTDOWN_MS)
-        fragment.hideControlsOverlay(true)
+        choicePanel.hide()
+        episodesPanel.hide()
         nextUp.visibility = View.VISIBLE
     }
 
@@ -753,7 +755,7 @@ class PlayerActivity : FragmentActivity() {
         when {
             next != null && settings.autoplayNext && !nextUpDismissed -> switchEpisode(forward = true)
             next != null && !nextUpDismissed -> showNextUp(next, countdown = false)
-            else -> fragment.showControlsOverlay(true)
+            else -> overlay(OverlayAction.SHOW)
         }
     }
 
@@ -809,16 +811,23 @@ class PlayerActivity : FragmentActivity() {
     private fun updateTitles() {
         val d = details ?: return
         val ep = episode
-        val subtitle = listOfNotNull(ep?.let { "${it.code} · ${it.name}" }, translator?.name).joinToString("  ·  ")
+        val info = listOfNotNull(ep?.let { "${it.code} · ${it.name}" }, translator?.name)
+        val cache = cacheMb?.let { getString(R.string.cache_progress, it) }
         glue?.title = d.title
-        glue?.subtitle = subtitle
         loadingTitle.text = d.title
-        loadingInfo.text = subtitle
+        loadingInfo.text = info.joinToString("  ·  ")
     }
 
     private fun showLoading() {
         if (player.playbackState == Player.STATE_IDLE || player.mediaItemCount == 0) loadingView.visibility = View.VISIBLE
         else player.pause()
+    }
+
+    private fun overlay(action: OverlayAction) {
+        when (action) {
+            OverlayAction.KEEP -> Unit
+            OverlayAction.SHOW -> fragment.tickle()
+        }
     }
 
     private fun showOsd(text: String, durationMs: Long = OSD_MS) {
