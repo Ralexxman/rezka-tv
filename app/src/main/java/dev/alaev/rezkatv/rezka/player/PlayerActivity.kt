@@ -107,6 +107,7 @@ class PlayerActivity : FragmentActivity() {
     private var episode: Episode? = null
     private var streams: Streams? = null
     private var quality: Quality? = null
+    private var chosenQuality: String? = null
     private var subtitle: Subtitle? = null
     private var urlIndex = 0
     private var tiles: List<Tile> = emptyList()
@@ -323,7 +324,7 @@ class PlayerActivity : FragmentActivity() {
             val s = loader.load { client.streams(d, t, target) } ?: return@launch showError()
             if (s.qualities.isEmpty()) return@launch fallbackToSite()
             streams = s
-            quality = QualityPicker.pick(s.qualities, settings.quality, screenHeight())
+            quality = QualityPicker.pick(s.qualities, chosenQuality ?: settings.quality, screenHeight())
             subtitle = s.subtitles.find { it.language != null && it.language == s.defaultSubtitle }
             glue?.setSubtitlesAvailable(s.subtitles.isNotEmpty())
             val position = if (positionMs != RESUME) positionMs else {
@@ -645,9 +646,9 @@ class PlayerActivity : FragmentActivity() {
         val s = streams ?: return
         val auto = QualityPicker.pick(s.qualities, Settings.AUTO, screenHeight())
         val labels = listOf(getString(R.string.quality_auto_current, auto?.label.orEmpty())) + s.qualities.map { it.label }
-        val selected = if (settings.quality == Settings.AUTO) 0 else s.qualities.indexOf(quality) + 1
+        val selected = QualityPicker.selectedIndex(s.qualities, quality, auto)
         choicePanel.show(getString(R.string.action_quality), labels, selected) { i ->
-            settings.setQuality(if (i == 0) Settings.AUTO else s.qualities[i - 1].label)
+            chosenQuality = if (i == 0) Settings.AUTO else s.qualities[i - 1].label
             val chosen = if (i == 0) auto else s.qualities[i - 1]
             if (chosen != null && chosen != quality) {
                 quality = chosen
