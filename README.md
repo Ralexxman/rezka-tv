@@ -1,17 +1,17 @@
 # Rezka TV
 
-**English summary.** Rezka TV is an unofficial Android TV client for the rezka (HDrezka) video site, built for a weak
-TV (TCL, Android 9, 32-bit ARM, 4× Cortex-A53, 1.4 GB RAM). Instead of the site's web player in a WebView it uses
+**English summary.** Rezka TV is an unofficial Android TV client for the rezka (HDrezka) video site, built for Android TV
+and Fire TV boxes (tested on a Fire TV Stick 4K Max: Fire OS 8, Android 11, 32-bit ARM, 1.7 GB RAM). Instead of the site's web player in a WebView it uses
 native ExoPlayer (Media3) playback and offers a TV interface in the style of big streaming services: a navigation rail,
 a billboard, rows of posters, a title page, an episode panel, scrubbing previews, «next episode» autoplay and sign-in
-by scanning a QR code with a phone. The APK is ≈3.7 MB. The UI is in Russian. You need your own rezka account; the app
+by scanning a QR code with a phone. The APK is ≈3.9 MB. The UI is in Russian. You need your own rezka account; the app
 does not host or distribute any content.
 
 ---
 
-Неофициальный клиент rezka (HDrezka) для Android TV, сделанный для слабого телевизора: вместо плеера сайта в WebView —
+Неофициальный клиент rezka (HDrezka) для Android TV и ТВ-приставок: вместо плеера сайта в WebView —
 родной ExoPlayer, вместо страниц сайта — привычный ТВ-интерфейс в стиле больших стриминговых сервисов (своё
-оформление, без чужих логотипов и шрифтов). APK — ≈3,7 МБ.
+оформление, без чужих логотипов и шрифтов). APK — ≈3,9 МБ.
 
 <p>
   <img src="docs/screenshots/home.jpg" width="49%" alt="Главная: меню слева, обложка выбранного тайтла и ряды">
@@ -46,14 +46,16 @@ does not host or distribute any content.
   (без большой обложки и с меньшим числом рядов), зеркало сайта, «Войти» (QR-код) и «Выйти из аккаунта», очистка кэша.
 - Режим «Сайт» — сайт целиком в WebView как запасной вариант.
 
-**Производительность** — главное требование для слабого ТВ: разобранные страницы кэшируются на диске и показываются
+**Производительность** — главное требование: разобранные страницы кэшируются на диске и показываются
 сразу, сеть только обновляет их; HTML разбирается в фоне и только нужными кусками; постеры в RGB_565;
 WebView не запускается в родных экранах (свои cookies).
 
 ## Замеры
 
-TCL на Android TV 9: Realtek RTD284x, 4× Cortex-A53 900 МГц, 1,4 ГБ RAM, 32-битный ARM, интерфейс 1280×720.
+Fire TV Stick 4K Max (`AFTKRT`), Fire OS 8 = Android 11, 1,7 ГБ RAM, 32-битный ARM, вывод 1920×1080.
 Release-сборка после `cmd package compile -m speed`, домашний Wi-Fi.
+Размер APK 3,9 МБ, холодный старт 497 мс (`Displayed … +497ms`), `gfxinfo` во время 1080p — 4,08 % janky,
+50 % кадров ≤ 7 мс. Таблица ниже снята на прежнем устройстве (TCL, Android TV 9).
 
 | Что | Сколько |
 |---|---|
@@ -66,11 +68,11 @@ Release-сборка после `cmd package compile -m speed`, домашний
 | CPU во время 1080p | приложение ≈35–45 % одного ядра, вся система ≈35 % из 4 ядер |
 | От OK до картинки | ≈4,3 с: страница и ссылка на поток ≈1 с, первый сегмент с CDN ≈3 с |
 
-Видео декодирует аппаратный декодер Realtek; приложение только качает поток и рисует интерфейс.
+Видео декодирует аппаратный декодер устройства; приложение только качает поток и рисует интерфейс.
 
 ## Требования
 
-- Android TV 9 (API 28) и новее.
+- Android 9 (API 28) и новее; проверено на Fire TV Stick 4K Max (Fire OS 8, Android 11).
 - Аккаунт rezka (для «Досмотреть», закладок и премиум-качества).
 
 ## Сборка и установка
