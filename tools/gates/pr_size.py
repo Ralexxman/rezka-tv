@@ -46,7 +46,7 @@ def violations(changes: list) -> list:
 
 def numstat_since(base: str) -> str:
     command = ["git", "diff", "--numstat", "-z", "-M", f"{base}...HEAD"]
-    return subprocess.run(command, check=True, capture_output=True, text=True).stdout
+    return subprocess.run(command, check=True, capture_output=True, encoding="utf-8").stdout
 
 
 def main(base: str) -> int:

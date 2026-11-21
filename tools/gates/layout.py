@@ -76,7 +76,7 @@ def annotation(path: str, message: str) -> str:
 
 
 def kotlin_sources() -> dict:
-    output = subprocess.run(["git", "ls-files", "-z", "*.kt"], check=True, capture_output=True, text=True).stdout
+    output = subprocess.run(["git", "ls-files", "-z", "*.kt"], check=True, capture_output=True, encoding="utf-8").stdout
     paths = [path for path in output.split("\0") if path and Path(path).is_file()]
     return {path: Path(path).read_text(encoding="utf-8", errors="replace") for path in paths}
 
