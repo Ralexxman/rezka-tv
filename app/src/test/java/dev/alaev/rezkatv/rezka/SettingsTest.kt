@@ -75,9 +75,77 @@ class SettingsTest {
     }
 
     @Test
+    fun readsHeightFromFourKLabel() {
+        val expected = 2160
+        val height = Quality("4K", emptyList()).height
+        assertThat("«4K» — это 2160 строк", height, equalTo(expected))
+    }
+
+    @Test
+    fun picksFourKLabelAsBest() {
+        val expected = "4K"
+        val picked = QualityPicker.pick(qualities("1080p Ultra", "4K"), Settings.BEST, 1080)?.label
+        assertThat("«Лучшее доступное» ставит 4K выше Ultra", picked, equalTo(expected))
+    }
+
+    @Test
     fun picksNothingFromEmptyList() {
         val picked = QualityPicker.pick(emptyList(), Settings.AUTO, 1080)
         assertThat("без качеств выбирать нечего", picked, nullValue())
+    }
+
+    @Test
+    fun highlightsCurrentStreamQuality() {
+        val list = all()
+        val second = list[1]
+        val expected = 2
+        assertThat(
+            "текущий 480p — вторая строка списка",
+            QualityPicker.selectedIndex(list, second, null),
+            equalTo(expected),
+        )
+    }
+
+    @Test
+    fun highlightsAutoRowWhenStreamIsScreenBest() {
+        val list = all()
+        val auto = QualityPicker.pick(list, Settings.AUTO, 1080)
+        val expected = 0
+        assertThat(
+            "поток равен авто-выбору — первая строка",
+            QualityPicker.selectedIndex(list, auto, auto),
+            equalTo(expected),
+        )
+    }
+
+    @Test
+    fun startsFromBestAvailableQuality() {
+        val stored = null
+        val migrated = true
+        val expected = Settings.BEST
+        assertThat("без настройки — лучшее доступное", QualityMigration.value(stored, migrated), equalTo(expected))
+    }
+
+    @Test
+    fun dropsQualityStoredByOldVersion() {
+        val stored = "720p"
+        val migrated = false
+        val expected = Settings.BEST
+        assertThat("старое 720p сбрасывается миграцией", QualityMigration.value(stored, migrated), equalTo(expected))
+    }
+
+    @Test
+    fun keepsExplicitChoiceAfterMigration() {
+        val stored = "480p"
+        val migrated = true
+        assertThat("явный выбор после миграции остаётся", QualityMigration.value(stored, migrated), equalTo(stored))
+    }
+
+    @Test
+    fun clearsStoredQualityOnlyOnce() {
+        val migrated = true
+        val expected = false
+        assertThat("миграция одноразовая", QualityMigration.clearsStored(migrated), equalTo(expected))
     }
 
     @Test

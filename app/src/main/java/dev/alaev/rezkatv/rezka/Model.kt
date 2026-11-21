@@ -73,8 +73,16 @@ enum class Sort(val title: String, val filter: String) {
 }
 
 data class Quality(val label: String, val urls: List<String>) {
-    val height: Int get() = label.takeWhile { it.isDigit() }.toIntOrNull() ?: 0
+    val height: Int
+        get() = HEIGHT.find(label)?.value?.toIntOrNull()
+            ?: ALIASES.firstOrNull { label.contains(it.first, true) }?.second
+            ?: 0
     val ultra: Boolean get() = !label.trimEnd().endsWith("p")
+
+    private companion object {
+        val HEIGHT = Regex("""\d{3,4}""")
+        val ALIASES = listOf("8K" to 4320, "4K" to 2160, "UHD" to 2160, "2K" to 1440)
+    }
 }
 
 data class Subtitle(val label: String, val url: String, val language: String?)

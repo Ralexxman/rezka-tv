@@ -7,7 +7,15 @@ class Settings(context: Context) {
 
     private val prefs = PreferenceManager.getDefaultSharedPreferences(context)
 
-    val quality: String get() = prefs.getString(KEY_QUALITY, AUTO) ?: AUTO
+    init {
+        if (QualityMigration.clearsStored(migrated)) {
+            prefs.edit().remove(KEY_QUALITY).putBoolean(KEY_QUALITY_MIGRATED, true).apply()
+        }
+    }
+
+    private val migrated: Boolean get() = prefs.getBoolean(KEY_QUALITY_MIGRATED, false)
+
+    val quality: String get() = QualityMigration.value(prefs.getString(KEY_QUALITY, null), migrated)
     val autoplayNext: Boolean get() = prefs.getBoolean(KEY_AUTOPLAY, true)
     val seekStepMs: Long get() = seekStepMs(prefs.getString(KEY_SEEK_STEP, null))
     val liteMode: Boolean get() = prefs.getBoolean(KEY_LITE, false)
@@ -18,11 +26,11 @@ class Settings(context: Context) {
             return if (saved == null || saved == RETIRED_MIRROR) RezkaClient.DEFAULT_BASE else saved
         }
 
-    fun setQuality(label: String) = prefs.edit().putString(KEY_QUALITY, label).apply()
     fun setBaseUrl(url: String) = prefs.edit().putString(KEY_MIRROR, url).apply()
 
     companion object {
         const val KEY_QUALITY = "quality"
+        private const val KEY_QUALITY_MIGRATED = "quality_migrated_best"
         const val KEY_AUTOPLAY = "autoplay_next"
         const val KEY_SEEK_STEP = "seek_step"
         const val KEY_LITE = "lite_mode"
@@ -38,7 +46,17 @@ class Settings(context: Context) {
     }
 }
 
+object QualityMigration {
+
+    fun clearsStored(migrated: Boolean) = !migrated
+
+    fun value(stored: String?, migrated: Boolean) = if (migrated) stored ?: Settings.BEST else Settings.BEST
+}
+
 object QualityPicker {
+
+    fun selectedIndex(available: List<Quality>, current: Quality?, auto: Quality?): Int =
+        if (current == null || current == auto) 0 else available.indexOf(current) + 1
 
     fun pick(available: List<Quality>, preferred: String, screenHeight: Int): Quality? {
         if (available.isEmpty()) return null

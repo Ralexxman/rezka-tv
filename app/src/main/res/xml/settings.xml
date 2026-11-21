@@ -5,7 +5,7 @@
     <PreferenceCategory app:title="@string/pref_playback">
 
         <ListPreference
-            app:defaultValue="auto"
+            app:defaultValue="best"
             app:entries="@array/quality_titles"
             app:entryValues="@array/quality_values"
             app:key="quality"
