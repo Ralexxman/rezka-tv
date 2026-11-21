@@ -29,6 +29,7 @@
         <item name="playbackControlsIconHighlightColor">@color/accent</item>
         <item name="playbackControlsTimeStyle">@style/PlayerTime</item>
         <item name="playbackControlsAutoHideTimeout">5000</item>
+        <item name="playbackControlsAutoHideTickleTimeout">5000</item>
         <item name="detailsDescriptionTitleStyle">@style/PlayerTitle</item>
         <item name="detailsDescriptionSubtitleStyle">@style/PlayerSubtitle</item>
     </style>
