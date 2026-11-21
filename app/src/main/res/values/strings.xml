@@ -78,6 +78,7 @@
     <string name="subtitles_off">Выключены</string>
     <string name="next_up">Следующая серия</string>
     <string name="next_up_in">Начнётся через %1$d с</string>
+    <string name="cache_progress">Кэш: %1$d МБ</string>
     <string name="next_up_play">▶  Смотреть</string>
     <string name="next_up_hint">OK — смотреть, Назад — остаться</string>
     <string name="player_error">Не удалось воспроизвести.\nOK — повторить, Назад — выйти</string>

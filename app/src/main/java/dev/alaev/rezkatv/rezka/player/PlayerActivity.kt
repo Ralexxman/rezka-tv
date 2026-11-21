@@ -693,6 +693,12 @@ class PlayerActivity : FragmentActivity() {
         }
         updateNextUp()
         drivePrefetch()
+        val mb = CacheProgress.megabytes(VideoCache.prefetchedBytes)
+        if (mb != cacheMb) {
+            cacheMb = mb
+            updateTitles()
+        }
+        overlay(OverlayPolicy.onPanel(choicePanel.isShowing || episodesPanel.isShowing))
     }
 
     private fun drivePrefetch() {
@@ -814,6 +820,7 @@ class PlayerActivity : FragmentActivity() {
         val info = listOfNotNull(ep?.let { "${it.code} · ${it.name}" }, translator?.name)
         val cache = cacheMb?.let { getString(R.string.cache_progress, it) }
         glue?.title = d.title
+        glue?.subtitle = (info + listOfNotNull(cache)).joinToString("  ·  ")
         loadingTitle.text = d.title
         loadingInfo.text = info.joinToString("  ·  ")
     }
