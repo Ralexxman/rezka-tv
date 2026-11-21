@@ -72,12 +72,12 @@ def context(description: str, diff: str, files: dict, calls: dict, extras: tuple
 
 
 def git(repo: str, *args: str) -> str:
-    return subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True, text=True).stdout
+    return subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True, encoding="utf-8").stdout
 
 
 def grep_word(repo: str, name: str) -> str:
     command = ["git", "grep", "-n", "-I", "-w", name, "--", ".", ":(exclude)quality"]
-    return subprocess.run(command, cwd=repo, check=False, capture_output=True, text=True).stdout
+    return subprocess.run(command, cwd=repo, check=False, capture_output=True, encoding="utf-8").stdout
 
 
 def text_files(numstat: str) -> list:

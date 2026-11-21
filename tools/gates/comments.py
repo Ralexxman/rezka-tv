@@ -187,7 +187,7 @@ def report(paths: list, ledger: set, changed: set) -> list:
 
 
 def git_paths(*args: str) -> list:
-    output = subprocess.run(["git", *args, "-z"], check=True, capture_output=True, text=True).stdout
+    output = subprocess.run(["git", *args, "-z"], check=True, capture_output=True, encoding="utf-8").stdout
     return [path for path in output.split("\0") if path]
 
 

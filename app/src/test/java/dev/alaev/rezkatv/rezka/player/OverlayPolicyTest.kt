@@ -8,15 +8,13 @@ class OverlayPolicyTest {
 
     @Test
     fun keepsOverlayVisibleWhilePanelIsOpen() {
-        assertThat("открытая панель держит оверлей", OverlayPolicy.onPanel(open = true), equalTo(OverlayAction.SHOW))
+        val actual = OverlayPolicy.onPanel(open = true)
+        assertThat("открытая панель держит оверлей", actual, equalTo(OverlayAction.SHOW))
     }
 
     @Test
     fun leavesOverlayToLeanbackWithoutPanel() {
-        assertThat(
-            "без панели оверлеем управляет leanback",
-            OverlayPolicy.onPanel(open = false),
-            equalTo(OverlayAction.KEEP),
-        )
+        val actual = OverlayPolicy.onPanel(open = false)
+        assertThat("без панели оверлеем управляет leanback", actual, equalTo(OverlayAction.KEEP))
     }
 }

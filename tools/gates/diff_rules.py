@@ -37,7 +37,7 @@ def relevant(paths: list) -> list:
 
 
 def git(repo: str, *args: str) -> str:
-    return subprocess.run(["git", "-C", repo, *args], check=True, capture_output=True, text=True).stdout
+    return subprocess.run(["git", "-C", repo, *args], check=True, capture_output=True, encoding="utf-8").stdout
 
 
 def contents(repo: str, ref: str, paths: list) -> dict:

@@ -101,14 +101,14 @@ def outdated_reviews(reviews: list, newest: int) -> list:
 
 def post(repo: str, number: str, payload: dict) -> int:
     command = ["gh", "api", f"repos/{repo}/pulls/{number}/reviews", "--input", "-"]
-    result = subprocess.run(command, input=json.dumps(payload), text=True, check=True, capture_output=True)
+    result = subprocess.run(command, input=json.dumps(payload), encoding="utf-8", check=True, capture_output=True)
     return json.loads(result.stdout)["id"]
 
 
 def post_line(repo: str, number: str, commit: str, finding: dict) -> bool:
     command = ["gh", "api", f"repos/{repo}/pulls/{number}/comments", "--input", "-"]
     payload = json.dumps({**inline_comment(finding), "commit_id": commit})
-    result = subprocess.run(command, check=False, input=payload, text=True, capture_output=True)
+    result = subprocess.run(command, check=False, input=payload, encoding="utf-8", capture_output=True)
     if result.returncode:
         where = f"{finding['path']}:{finding['line']}"
         print(
@@ -119,12 +119,12 @@ def post_line(repo: str, number: str, commit: str, finding: dict) -> bool:
 
 def edit_review(repo: str, number: str, review_id: int, body: str) -> None:
     command = ["gh", "api", "-X", "PUT", f"repos/{repo}/pulls/{number}/reviews/{review_id}", "-f", f"body={body}"]
-    subprocess.run(command, text=True, check=True, capture_output=True)
+    subprocess.run(command, encoding="utf-8", check=True, capture_output=True)
 
 
 def head_commit(repo: str, number: str) -> str:
     command = ["gh", "api", f"repos/{repo}/pulls/{number}", "--jq", ".head.sha"]
-    return subprocess.run(command, text=True, check=True, capture_output=True).stdout.strip()
+    return subprocess.run(command, encoding="utf-8", check=True, capture_output=True).stdout.strip()
 
 
 def first_report(repo: str, number: str, verdict: dict, previous: list, still_open: list, diff_id: str) -> int:
@@ -147,7 +147,7 @@ def update_report(
 def graphql(query: str, **variables: str) -> dict:
     fields = [arg for name, value in variables.items() for arg in ("-F", f"{name}={value}")]
     command = ["gh", "api", "graphql", "-f", f"query={query}", *fields]
-    result = subprocess.run(command, check=False, text=True, capture_output=True)
+    result = subprocess.run(command, check=False, encoding="utf-8", capture_output=True)
     if result.returncode:
         raise RuntimeError(f"gh api graphql: {result.stderr.strip() or result.stdout.strip()}")
     return json.loads(result.stdout)
@@ -174,7 +174,7 @@ def publish(repo: str, number: str, verdict: dict, previous: list, still_open: l
 
 def fetch_reviews(repo: str, number: str) -> list:
     command = ["gh", "api", "--paginate", "--slurp", f"repos/{repo}/pulls/{number}/reviews"]
-    pages = json.loads(subprocess.run(command, text=True, check=True, capture_output=True).stdout)
+    pages = json.loads(subprocess.run(command, encoding="utf-8", check=True, capture_output=True).stdout)
     return [review for page in pages for review in page]
 
 
