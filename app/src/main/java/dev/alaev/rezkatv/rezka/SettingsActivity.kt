@@ -12,6 +12,7 @@ import androidx.preference.PreferenceScreen
 import com.bumptech.glide.Glide
 import dev.alaev.rezkatv.BuildConfig
 import dev.alaev.rezkatv.R
+import dev.alaev.rezkatv.rezka.player.VideoCache
 import kotlin.concurrent.thread
 
 class SettingsActivity : FragmentActivity() {
@@ -36,6 +37,7 @@ class SettingsActivity : FragmentActivity() {
         }
     }
 
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     class PrefsFragment : LeanbackPreferenceFragmentCompat() {
 
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
@@ -48,6 +50,7 @@ class SettingsActivity : FragmentActivity() {
             findPreference<Preference>("clear_cache")?.setOnPreferenceClickListener {
                 val context = requireContext().applicationContext
                 RezkaClient.get(context).clearCaches()
+                VideoCache.clear()
                 Glide.get(context).clearMemory()
                 thread { Glide.get(context).clearDiskCache() }
                 Toast.makeText(context, R.string.cache_cleared, Toast.LENGTH_SHORT).show()
