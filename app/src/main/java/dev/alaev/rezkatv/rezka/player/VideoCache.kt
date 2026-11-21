@@ -49,6 +49,10 @@ object VideoCache {
     private var job: Job? = null
     private var jobUrl: String? = null
 
+    @Volatile private var fetched = 0L
+
+    val prefetchedBytes: Long? get() = fetched.takeIf { job?.isActive == true }
+
     fun install(context: Context, upstreamFactory: DataSource.Factory): DataSource.Factory {
         val app = context.applicationContext
         upstream = upstreamFactory
@@ -81,6 +85,7 @@ object VideoCache {
         cancel()
         val source = CacheDataSource.Factory().setCache(store).setUpstreamDataSourceFactory(factory).createDataSource()
         jobUrl = url
+        fetched = 0L
         job = io.launch { fill(source, store, url, positionMs, height) }
     }
 
@@ -103,7 +108,13 @@ object VideoCache {
         }
     }
 
-    private fun fill(source: DataSource, store: SimpleCache, url: String, positionMs: Long, height: Int) {
+    private fun CoroutineScope.fill(
+        source: DataSource,
+        store: SimpleCache,
+        url: String,
+        positionMs: Long,
+        height: Int,
+    ) {
         val buffer = ByteArray(READ_BUFFER)
         val start = store.cacheSpace
         val specs = if (url.endsWith(HLS)) {
@@ -116,7 +127,7 @@ object VideoCache {
         }
         try {
             for (spec in specs) {
-                if (!io.isActive || store.cacheSpace - start >= sizeBytes / BUDGET_PART) break
+                if (!isActive || store.cacheSpace - start >= sizeBytes / BUDGET_PART) break
                 drain(source, spec, buffer, store, start)
             }
         } catch (e: IOException) {
@@ -128,11 +139,19 @@ object VideoCache {
         }
     }
 
-    private fun drain(source: DataSource, spec: DataSpec, buffer: ByteArray, store: SimpleCache, start: Long) {
+    private fun CoroutineScope.drain(
+        source: DataSource,
+        spec: DataSpec,
+        buffer: ByteArray,
+        store: SimpleCache,
+        start: Long,
+    ) {
         source.open(spec)
         try {
-            while (io.isActive && store.cacheSpace - start < sizeBytes / BUDGET_PART) {
-                if (source.read(buffer, 0, buffer.size) == C.RESULT_END_OF_INPUT) break
+            while (isActive && store.cacheSpace - start < sizeBytes / BUDGET_PART) {
+                val read = source.read(buffer, 0, buffer.size)
+                if (read == C.RESULT_END_OF_INPUT) break
+                fetched += read
             }
         } finally {
             DataSourceUtil.closeQuietly(source)
