@@ -15,7 +15,8 @@ class AnubisTest {
 
     @Test
     fun findsNoChallengeOnRealPage() {
-        assertThat("на обычной странице задачи нет", Anubis.challenge("<html><body></body></html>"), equalTo(null))
+        val plain = "<html><body></body></html>"
+        assertThat("на обычной странице задачи нет", Anubis.challenge(plain), equalTo(null))
     }
 
     @Test
@@ -30,7 +31,8 @@ class AnubisTest {
     fun solvesOddDifficulty() {
         val solved = Anubis.solve("abc", ODD_DIFFICULTY)
         val expected = "0".repeat(ODD_DIFFICULTY)
-        assertThat("три нуля при нечётной сложности", solved.second.take(3), equalTo(expected))
+        val head = solved.second.take(expected.length)
+        assertThat("три нуля при нечётной сложности", head, equalTo(expected))
     }
 
     private fun page() = javaClass.getResource("/anubis/challenge.html")!!.readText()

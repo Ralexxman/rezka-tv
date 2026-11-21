@@ -3,8 +3,6 @@ package dev.alaev.rezkatv.rezka
 import org.json.JSONObject
 import java.security.MessageDigest
 
-data class AnubisChallenge(val id: String, val randomData: String, val difficulty: Int)
-
 object Anubis {
 
     const val PASS_PATH = "/.within.website/x/cmd/anubis/api/pass-challenge"
