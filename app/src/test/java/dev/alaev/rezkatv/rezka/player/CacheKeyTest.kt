@@ -15,6 +15,23 @@ class CacheKeyTest {
     }
 
     @Test
+    fun matchesSameSegmentAfterSignatureExpires() {
+        val file = "/8/0/3/5/3/6/mkpiy.mp4:hls:seg-61-v1-a1.ts"
+        val expected = CacheKey.of("https://a.example/0085c6d8a2bb:2026112311:dlF6N1dH==$file")
+        val actual = CacheKey.of("https://a.example/77ab01ff93ce:2026112314:Qm9vYXJ0==$file")
+        assertThat("после новой подписи потока сегмент находится в кэше", actual, equalTo(expected))
+    }
+
+    @Test
+    fun separatesFilesWithSameSignature() {
+        val signed = "https://a.example/0085c6d8a2bb:2026112311:dlF6N1dH=="
+        val expected = false
+        val actual = CacheKey.of("$signed/8/0/3/a.mp4:hls:seg-1-v1-a1.ts") ==
+            CacheKey.of("$signed/8/0/4/b.mp4:hls:seg-1-v1-a1.ts")
+        assertThat("сегменты разных файлов не смешиваются в кэше", actual, equalTo(expected))
+    }
+
+    @Test
     fun keepsQueryInKey() {
         val expected = "/seg-1.ts?t=abc"
         val actual = CacheKey.of("https://cdn.example/seg-1.ts?t=abc")
