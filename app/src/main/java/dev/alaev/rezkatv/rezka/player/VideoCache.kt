@@ -1,5 +1,6 @@
 package dev.alaev.rezkatv.rezka.player
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
 import android.util.Log
@@ -43,6 +44,7 @@ object VideoCache {
     private val io = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var cache: SimpleCache? = null
     private var sizeBytes = 0L
+    private var wantedBytes = 0L
     private var upstream: DataSource.Factory? = null
     private var job: Job? = null
     private var jobUrl: String? = null
@@ -56,7 +58,7 @@ object VideoCache {
         upstream = upstreamFactory
         val store = synchronized(lock) {
             val ready = cache
-            if (ready != null && sizeBytes != Settings(app).cacheGb * GB) {
+            if (ready != null && wantedBytes != Settings(app).cacheGb * GB) {
                 cancel()
                 ready.release()
                 cache = null
@@ -94,9 +96,12 @@ object VideoCache {
         jobUrl = null
     }
 
+    @SuppressLint("UsableSpace")
     private fun create(app: Context): SimpleCache {
-        val size = Settings(app).cacheGb * GB
+        val wanted = Settings(app).cacheGb * GB
         val dir = File(app.cacheDir, FOLDER)
+        val used = dir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+        val size = CacheBudget.cacheBytes(wanted, used, app.cacheDir.usableSpace)
         return SimpleCache(
             dir,
             LeastRecentlyUsedCacheEvictor(size),
@@ -104,6 +109,7 @@ object VideoCache {
         ).also {
             cache = it
             sizeBytes = size
+            wantedBytes = wanted
         }
     }
 
