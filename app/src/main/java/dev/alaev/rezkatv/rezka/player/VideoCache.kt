@@ -2,23 +2,19 @@ package dev.alaev.rezkatv.rezka.player
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.net.Uri
 import android.util.Log
 import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.database.StandaloneDatabaseProvider
 import androidx.media3.datasource.DataSource
-import androidx.media3.datasource.DataSourceInputStream
 import androidx.media3.datasource.DataSourceUtil
 import androidx.media3.datasource.DataSpec
+import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.CacheKeyFactory
+import androidx.media3.datasource.cache.ContentMetadata
 import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
-import androidx.media3.exoplayer.hls.playlist.HlsMediaPlaylist
-import androidx.media3.exoplayer.hls.playlist.HlsMultivariantPlaylist
-import androidx.media3.exoplayer.hls.playlist.HlsPlaylist
-import androidx.media3.exoplayer.hls.playlist.HlsPlaylistParser
 import dev.alaev.rezkatv.rezka.Settings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,7 +24,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.IOException
-import java.net.URI
 
 @UnstableApi
 object VideoCache {
@@ -37,7 +32,6 @@ object VideoCache {
     private const val FOLDER = "video"
     private const val GB = 1024L * 1024 * 1024
     private const val READ_BUFFER = 64 * 1024
-    private const val MAX_PLAYLIST_DEPTH = 1
     private const val HLS = ".m3u8"
 
     private val lock = Any()
@@ -94,7 +88,7 @@ object VideoCache {
             .createDataSource()
         jobUrl = url
         fetched = 0L
-        job = io.launch { fill(source, url, positionMs, height) }
+        job = io.launch { fill(store, source, url, positionMs, height) }
     }
 
     fun cancel() {
@@ -120,13 +114,13 @@ object VideoCache {
         }
     }
 
-    private fun CoroutineScope.fill(source: DataSource, url: String, positionMs: Long, height: Int) {
+    private fun CoroutineScope.fill(store: Cache, source: DataSource, url: String, positionMs: Long, height: Int) {
         val buffer = ByteArray(READ_BUFFER)
-        val specs = segments(url, positionMs, height)
         try {
-            for (spec in specs) {
+            for (spec in upstream?.let { HlsSegments.from(it, url, positionMs, height) }.orEmpty()) {
                 if (!isActive || !CacheBudget.allowsPrefetch(fetched, sizeBytes)) break
-                drain(source, spec, buffer)
+                val held = store.heldBytes(spec)
+                if (held > 0) fetched += held else drain(source, spec, buffer)
             }
         } catch (e: IOException) {
             Log.i(TAG, "prefetch stopped: ${e.message}")
@@ -150,46 +144,9 @@ object VideoCache {
         }
     }
 
-    private fun segments(url: String, positionMs: Long, height: Int, depth: Int = 0): List<DataSpec> {
-        val uri = Uri.parse(url)
-        val playlist = readPlaylist(uri) ?: return emptyList()
-        return when (playlist) {
-            is HlsMultivariantPlaylist -> variantSegments(playlist, positionMs, height, depth)
-            is HlsMediaPlaylist -> mediaSegments(playlist, positionMs)
-            else -> emptyList()
-        }
-    }
-
-    private fun variantSegments(
-        playlist: HlsMultivariantPlaylist,
-        positionMs: Long,
-        height: Int,
-        depth: Int,
-    ): List<DataSpec> {
-        val fitting = playlist.variants.filter { it.format.height <= height.coerceAtLeast(1) }
-        val variant = (fitting.maxByOrNull { it.format.height } ?: playlist.variants.firstOrNull())?.url
-        val deeper = depth < MAX_PLAYLIST_DEPTH
-        if (variant == null || !deeper) return emptyList()
-        return segments(URI(playlist.baseUri).resolve(variant.toString()).toString(), positionMs, height, depth + 1)
-    }
-
-    private fun mediaSegments(playlist: HlsMediaPlaylist, positionMs: Long): List<DataSpec> {
-        val fromUs = positionMs * 1000
-        return playlist.segments
-            .filter { it.relativeStartTimeUs + it.durationUs > fromUs }
-            .map { DataSpec(Uri.parse(URI(playlist.baseUri).resolve(it.url).toString())) }
-    }
-
-    private fun readPlaylist(uri: Uri): HlsPlaylist? {
-        val source = upstream?.createDataSource() ?: return null
-        val stream = DataSourceInputStream(source, DataSpec(uri))
-        return try {
-            HlsPlaylistParser().parse(uri, stream)
-        } catch (e: IOException) {
-            Log.w(TAG, "playlist ${uri.lastPathSegment}: ${e.message}")
-            null
-        } finally {
-            DataSourceUtil.closeQuietly(source)
-        }
+    private fun Cache.heldBytes(spec: DataSpec): Long {
+        val key = this@VideoCache.keys.buildCacheKey(spec)
+        val length = ContentMetadata.getContentLength(getContentMetadata(key))
+        return if (length > 0 && isCached(key, 0, length)) length else 0
     }
 }
