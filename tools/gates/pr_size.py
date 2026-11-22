@@ -20,7 +20,7 @@ def parse_numstat(text: str) -> list:
 
 def parse_record(record: str, fields) -> Change:
     added, deleted, path = record.split("\t", 2)
-    lines = 0 if added == "-" else int(added) + int(deleted)
+    lines = 0 if added in ("-", "0") else int(added) + int(deleted)
     return Change(path or renamed_target(fields), lines)
 
 

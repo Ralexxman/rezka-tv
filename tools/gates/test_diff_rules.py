@@ -52,6 +52,24 @@ class DiffRulesTest(unittest.TestCase):
         expected = ["тестов стало меньше: было 2, стало 1; тесты не удаляют, а исправляют"]
         self.assertEqual(expected, gate.lost_tests(before, after), "удалять тесты нельзя")
 
+    def test_accepts_tests_of_removed_module(self):
+        code, test = "tools/gates/old.py", "tools/gates/test_old.py"
+        before, after = {code: "x = 1\n", test: "def test_a():\n"}, {}
+        expected = []
+        self.assertEqual(expected, gate.lost_tests(before, after), "тесты удалённого модуля — не потеря")
+
+    def test_accepts_kotlin_test_of_removed_module(self):
+        code, test = "app/src/main/java/Parser.kt", "app/src/test/java/ParserTest.kt"
+        before, after = {code: "x\n", test: "@Test fun a()\n"}, {}
+        expected = []
+        self.assertEqual(expected, gate.lost_tests(before, after), "Kotlin-тест удалённого класса — не потеря")
+
+    def test_reports_removed_test_whose_module_stays(self):
+        code, test = "tools/gates/old.py", "tools/gates/test_old.py"
+        before, after = {code: "x = 1\n", test: "def test_a():\n"}, {code: "x = 2\n"}
+        expected = ["тестов стало меньше: было 1, стало 0; тесты не удаляют, а исправляют"]
+        self.assertEqual(expected, gate.lost_tests(before, after), "тест удалён, модуль остался — потеря")
+
     def test_reports_code_change_without_tests(self):
         path = "app/src/main/java/A.kt"
         before, after = {path: "val a = 1\n"}, {path: "val a = 2\n"}

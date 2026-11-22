@@ -67,6 +67,19 @@ class PrSizeTest(unittest.TestCase):
         row = f"211\t0\t{disguised}\0"
         self.assertEqual(1, len(violations(parse_numstat(row))), "имя с « => » не превращает файл в журнал долга")
 
+    def test_accepts_removal_of_whole_file(self):
+        record = "0\t240\ttools/gates/old_gate.py\0"
+        expected = []
+        self.assertEqual(
+            expected, violations(parse_numstat(record)), "удаление файла целиком не создаёт нагрузки на ревью"
+        )
+
+    def test_counts_change_that_adds_lines(self):
+        record = "11\t200\ttools/gates/gate.py\0"
+        expected = 1
+        actual = len(violations(parse_numstat(record)))
+        self.assertEqual(expected, actual, "правка с добавлением строк считается целиком")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -16,8 +16,19 @@ def test_count(path: str, text: str) -> int:
     return len(pattern.findall(text)) if TESTS.match(path) else 0
 
 
+def subject_names(path: str) -> set:
+    name = path.rpartition("/")[2]
+    return {name.removeprefix("test_"), f"{name.removesuffix('Test.kt')}.kt"} - {name}
+
+
+def orphaned(path: str, before: dict, after: dict) -> bool:
+    gone = {p.rpartition("/")[2] for p in before if p not in after}
+    return path in before and path not in after and bool(subject_names(path) & gone)
+
+
 def lost_tests(before: dict, after: dict) -> list:
-    old, new = sum(test_count(p, t) for p, t in before.items()), sum(test_count(p, t) for p, t in after.items())
+    old = sum(test_count(path, text) for path, text in before.items() if not orphaned(path, before, after))
+    new = sum(test_count(path, text) for path, text in after.items())
     return [] if new >= old else [f"тестов стало меньше: было {old}, стало {new}; тесты не удаляют, а исправляют"]
 
 
