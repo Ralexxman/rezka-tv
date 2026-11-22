@@ -21,4 +21,20 @@ class CacheBudgetTest {
         val actual = CacheBudget.allowsPrefetch(cache / 2, cache)
         assertThat("докачка останавливается на половине кэша, даже если кэш полный", actual, equalTo(expected))
     }
+
+    @Test
+    fun keepsChosenSizeWhenStorageIsRoomy() {
+        val gb = 1024L * 1024 * 1024
+        val expected = 4 * gb
+        val actual = CacheBudget.cacheBytes(4 * gb, 2 * gb, 9 * gb)
+        assertThat("на просторной приставке кэш как в настройках", actual, equalTo(expected))
+    }
+
+    @Test
+    fun takesAtMostHalfOfStorageAvailableToCache() {
+        val gb = 1024L * 1024 * 1024
+        val expected = 3 * gb
+        val actual = CacheBudget.cacheBytes(4 * gb, 4 * gb, 2 * gb)
+        assertThat("кэш не больше половины места, своего и свободного", actual, equalTo(expected))
+    }
 }
