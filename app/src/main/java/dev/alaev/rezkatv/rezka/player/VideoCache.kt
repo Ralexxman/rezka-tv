@@ -11,7 +11,6 @@ import androidx.media3.datasource.DataSourceInputStream
 import androidx.media3.datasource.DataSourceUtil
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.cache.CacheDataSource
-import androidx.media3.datasource.cache.CacheKeyFactory
 import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.exoplayer.hls.playlist.HlsMediaPlaylist
@@ -35,7 +34,6 @@ object VideoCache {
     private const val TAG = "RezkaTv"
     private const val FOLDER = "video"
     private const val GB = 1024L * 1024 * 1024
-    private const val BUDGET_PART = 2
     private const val READ_BUFFER = 64 * 1024
     private const val MAX_PLAYLIST_DEPTH = 1
     private const val HLS = ".m3u8"
@@ -78,6 +76,7 @@ object VideoCache {
     }
 
     fun prefetch(url: String, positionMs: Long, height: Int) {
+        if (!url.endsWith(HLS)) return
         val running = job?.isActive == true && jobUrl == url
         val store = cache
         val factory = upstream
@@ -86,7 +85,7 @@ object VideoCache {
         val source = CacheDataSource.Factory().setCache(store).setUpstreamDataSourceFactory(factory).createDataSource()
         jobUrl = url
         fetched = 0L
-        job = io.launch { fill(source, store, url, positionMs, height) }
+        job = io.launch { fill(source, url, positionMs, height) }
     }
 
     fun cancel() {
@@ -108,27 +107,13 @@ object VideoCache {
         }
     }
 
-    private fun CoroutineScope.fill(
-        source: DataSource,
-        store: SimpleCache,
-        url: String,
-        positionMs: Long,
-        height: Int,
-    ) {
+    private fun CoroutineScope.fill(source: DataSource, url: String, positionMs: Long, height: Int) {
         val buffer = ByteArray(READ_BUFFER)
-        val start = store.cacheSpace
-        val specs = if (url.endsWith(HLS)) {
-            segments(url, positionMs, height)
-        } else {
-            val spec = DataSpec(Uri.parse(url))
-            val key = CacheKeyFactory.DEFAULT.buildCacheKey(spec)
-            val cached = store.getCachedBytes(key, 0, Long.MAX_VALUE).coerceAtLeast(0)
-            listOf(spec.buildUpon().setPosition(cached).build())
-        }
+        val specs = segments(url, positionMs, height)
         try {
             for (spec in specs) {
-                if (!isActive || store.cacheSpace - start >= sizeBytes / BUDGET_PART) break
-                drain(source, spec, buffer, store, start)
+                if (!isActive || !CacheBudget.allowsPrefetch(fetched, sizeBytes)) break
+                drain(source, spec, buffer)
             }
         } catch (e: IOException) {
             Log.i(TAG, "prefetch stopped: ${e.message}")
@@ -139,16 +124,10 @@ object VideoCache {
         }
     }
 
-    private fun CoroutineScope.drain(
-        source: DataSource,
-        spec: DataSpec,
-        buffer: ByteArray,
-        store: SimpleCache,
-        start: Long,
-    ) {
+    private fun CoroutineScope.drain(source: DataSource, spec: DataSpec, buffer: ByteArray) {
         source.open(spec)
         try {
-            while (isActive && store.cacheSpace - start < sizeBytes / BUDGET_PART) {
+            while (isActive && CacheBudget.allowsPrefetch(fetched, sizeBytes)) {
                 val read = source.read(buffer, 0, buffer.size)
                 if (read == C.RESULT_END_OF_INPUT) break
                 fetched += read
