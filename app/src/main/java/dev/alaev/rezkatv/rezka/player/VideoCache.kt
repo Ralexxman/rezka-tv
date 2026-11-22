@@ -12,6 +12,7 @@ import androidx.media3.datasource.DataSourceInputStream
 import androidx.media3.datasource.DataSourceUtil
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.cache.CacheDataSource
+import androidx.media3.datasource.cache.CacheKeyFactory
 import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.exoplayer.hls.playlist.HlsMediaPlaylist
@@ -40,6 +41,7 @@ object VideoCache {
     private const val HLS = ".m3u8"
 
     private val lock = Any()
+    private val keys = CacheKeyFactory { spec -> spec.key ?: CacheKey.of(spec.uri.toString()) }
 
     private val io = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var cache: SimpleCache? = null
@@ -67,6 +69,7 @@ object VideoCache {
         }
         return CacheDataSource.Factory()
             .setCache(store)
+            .setCacheKeyFactory(keys)
             .setUpstreamDataSourceFactory(upstreamFactory)
             .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
     }
@@ -84,7 +87,11 @@ object VideoCache {
         val factory = upstream
         if (running || store == null || factory == null) return
         cancel()
-        val source = CacheDataSource.Factory().setCache(store).setUpstreamDataSourceFactory(factory).createDataSource()
+        val source = CacheDataSource.Factory()
+            .setCache(store)
+            .setCacheKeyFactory(keys)
+            .setUpstreamDataSourceFactory(factory)
+            .createDataSource()
         jobUrl = url
         fetched = 0L
         job = io.launch { fill(source, url, positionMs, height) }
